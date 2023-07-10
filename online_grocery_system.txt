@@ -1,0 +1,38 @@
+ONLINE GROCERY SYSTEM
+
+---------------------------------------------------
+CREATE TABLES
+---------------------------------------------------
+
+create table Admin(email varchar2(25) primary key,first_name varchar2(25) not null,lname varchar2(25),password varchar(20));
+
+create table Users(email varchar2(25) primary key,first_name varchar2(25) not null,lname varchar2(25),password varchar(20));
+
+create table Product(pro_id int primary key,name varchar2(25) not null,price number(6,2) not null, category_id int,discount varchar(15),available_units int);
+
+create table category(category_id int primary key, category_name varchar2(25));
+
+create table order_placed(buyer_id varchar2(25) primary key,total_qty number(5),total_price number(10));
+
+create table contact_detail( user_id varchar2(25) not null, address_id int primary key, street1 varchar2(20) not null, 
+		city varchar2(15) not null, state varchar2(15) not null, country varchar2(15) not null, pincode number(5) not null, is_default number(1) default 0);
+
+create table buyer( buyer_id varchar2(25) primary key,is_prime number(1) default 0, prime_expiry_date date);
+
+-------------------------------------------------------------------
+ADDING FOREIGN KEY
+-------------------------------------------------------------------
+
+alter table cart add constraint cart_buyer_id_fk foreign key (buyer_id) references buyer (buyer_id) on delete cascade;
+
+alter table product_cart add constraint pro_cart_buyer_id_fk foreign key (buyer_id) references buyer( buyer_id) on delete cascade;
+
+alter table product_cart add constraint pro_cart_shop_fk foreign key (product_id) references product(pro_id) on delete cascade;
+
+alter table order_placed add constraint order_fk foreign key (buyer_id) REFERENCES buyer(buyer_id) on delete cascade;
+
+alter table contact_detail add constraint contact_user_id_fk foreign key (user_id) references users (email) on delete cascade;
+
+alter table product add constraint pro_cat_id foreign key (category_id) references category (category_id) on delete cascade;
+
+

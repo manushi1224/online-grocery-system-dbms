@@ -1,0 +1,254 @@
+----------------------------------------------
+PROCEDURES
+----------------------------------------------
+1) ADD PRODUCTS
+
+create or replace procedure add_prod (
+	p_id in product.pro_id%type,
+	p_name in product.name%type,
+	p_price in product.price%type,
+	cat_id in product.category_id%type,
+	disc in product.discount%type,
+	avail_units in product.available_units%type
+) IS
+begin
+	insert into product(pro_id,name,price,category_id,discount,available_units) values (
+		p_id,
+		p_name,
+		p_price,
+		cat_id,
+		disc,
+		avail_units
+	);
+commit;
+end;
+
+-------------------------------------------------
+2)REGISTER ADMIN
+
+create or replace procedure register_admin(
+	a_email IN admin.email%TYPE,
+	f_name IN admin.first_name%TYPE,
+	l_name IN admin.last_name%TYPE,
+	pass IN admin.password%TYPE
+) IS
+
+begin
+	insert into admin(email,first_name,last_name,password) values (
+		a_email,
+		f_name,
+		l_name,
+		pass
+	);
+commit;
+end;
+
+------------------------------------------------
+3)REGISTER USER
+
+create or replace procedure register_user(
+	u_email IN users.email%TYPE,
+	f_name IN users.first_name%TYPE,
+	l_name IN users.last_name%TYPE,
+	pass IN users.password%TYPE
+) IS
+
+begin
+	insert into users(email,first_name,last_name,password) values (
+		u_email,
+		f_name,
+		l_name,
+		pass
+	);
+commit;
+end;
+
+------------------------------------------------
+4)Add Contact Details
+create or replace procedure add_contact(
+	u_id IN contact_detail.user_id%TYPE,
+	add_id IN contact_detail.address_id%TYPE,
+	strt1 IN contact_detail.street1%TYPE,
+	c_city IN contact_detail.city%TYPE,
+	c_state IN contact_detail.state%TYPE,
+	c_country IN contact_detail.country%TYPE,
+	c_pincode IN contact_detail.pincode%TYPE,
+	c_phone IN contact_detail.phone%TYPE
+) IS
+begin 
+	insert into contact_detail(user_id,address_id,street1,city,state,country,pincode,phone)
+	values (
+		u_id,
+		add_id,
+		strt1,
+		c_city,
+		c_state,
+		c_country,
+		c_pincode,
+		c_phone
+	);
+commit;
+end;
+
+----------------------------------------------------
+5) ADD TO CART
+
+//run @addtocart to show the products first
+
+create or replace procedure add_to_cart(
+    c_buyer_id IN cart.buyer_id%TYPE,
+    c_product_id IN cart.product_id%TYPE,
+    c_qty IN cart.quantity%TYPE
+)
+IS
+c_price number;
+begin
+    select price into c_price from product where pro_id=c_product_id;
+        insert into cart(buyer_id,product_id,quantity,date_added) values (c_buyer_id,c_product_id,c_qty,sysdate);
+        insert into product_cart(buyer_id,product_id,quantity,price) values (c_buyer_id,c_product_id,c_qty,c_price);
+end;
+
+----------------------------------------------------
+6)DELETE FROM CART
+
+create or replace procedure add_to_cart(
+    c_buyer_id IN cart.buyer_id%TYPE,
+    c_product_id IN cart.product_id%TYPE,
+    c_qty IN cart.quantity%TYPE
+)
+IS
+c_price number;
+begin
+    select price into c_price from product where pro_id=c_product_id;
+        insert into cart(buyer_id,product_id,quantity,date_added) values (c_buyer_id,c_product_id,c_qty,sysdate);
+        insert into product_cart(buyer_id,product_id,quantity,price) values (c_buyer_id,c_product_id,c_qty,c_price);
+end;
+----------------------------------------------------
+7)PLACE ORDER
+
+create or replace procedure place_order(
+buyer_id_var in product_cart.buyer_id%TYPE
+)
+IS
+total_price_var number:=0;
+curr_price number;
+total_quantity number:=0;
+qty number;
+shipping_price_var number:=0;
+is_prime_var number:=0;
+CURSOR product_cur IS
+select product_id,quantity,price from product_cart where buyer_id=buyer_id_var;
+product_id_var integer;
+begin
+OPEN product_cur;
+LOOP
+FETCH product_cur INTO product_id_var,qty,curr_price;
+EXIT when product_cur%NOTFOUND;
+total_price_var:=total_price_var + ( curr_price * qty );
+total_quantity:=total_quantity + qty;
+END LOOP;
+select is_prime into is_prime_var from buyer where buyer_id=buyer_id_var;
+if is_prime_var=1 then 
+    shipping_price_var:=0;
+    total_price_var:=total_price_var+shipping_price_var;
+else
+    shipping_price_var:=10;
+    total_price_var:=total_price_var+shipping_price_var;
+    end if;
+insert into order_placed(buyer_id,total_qty,total_price) values(buyer_id_var,total_quantity,total_price_var);
+CLOSE product_cur;
+END;
+
+--------------------------------------------------------
+8)UPDATE MEMBERSHIP
+
+create or replace procedure update_membership (
+    buyer_id_input IN VARCHAR
+) IS
+c_date DATE:=sysdate;
+begin
+    update buyer
+    set
+        is_prime = 1,
+        prime_expiry_date = add_months(c_date, 12)
+    where
+        buyer_id = buyer_id_input;
+
+end;
+
+---------------------------------------------------------
+9)UPDATE USER
+
+create or replace procedure update_user(
+    u_id IN users.email%TYPE,
+    f_name IN users.first_name%TYPE,
+	l_name IN users.last_name%TYPE,
+	pass IN users.password%TYPE
+)
+IS
+begin
+update users set email=u_id,first_name=f_name,last_name=l_name,password=pass where email=u_id;
+end;
+
+---------------------------------------------------------------------
+10)DELETE USER
+
+create or replace procedure delete_user(
+    u_id IN users.email%TYPE
+)
+IS
+begin
+    delete from users 
+        where users.email=u_id;
+    delete from buyer 
+        where buyer.buyer_id=u_id;
+end;
+
+-----------------------------------------------------------------------
+TRIGGERS
+-----------------------------------------------------------------------
+1)AFTER REMOVE FROM CART
+create or replace trigger remove_items after
+    insert on order_placed
+    for each row
+declare begin
+    delete from cart
+    where buyer_id=:new.buyer_id;
+    
+    delete from product_cart 
+    where buyer_id=:new.buyer_id;
+    
+    dbms_output.put_line('YOUR ORDER IS PLACED!');
+    dbms_output.put_line('ITEMS HAVE BEEN REMOVED FROM CART SUCCESSFULLY!');
+end;
+
+-----------------------------------------------------------------------
+2)AFTER UPDATE ITEMS
+
+create or replace trigger update_items after
+    update on users
+    for each row
+declare begin
+    dbms_output.put_line('YOUR DATA HAS BEEN UPDATED!');
+end;
+/
+
+------------------------------------------------------------------------
+3)AFTER DELETE ITEMS
+
+create or replace trigger update_items after
+    delete on users
+    for each row
+declare begin
+    dbms_output.put_line('YOUR DATA HAS BEEN DELETED!');
+end;
+/
+
+-------------------------------------------------------------------------
+VIEW
+-------------------------------------------------------------------------
+select p.pro_id,p.name,p.price,p.discount,p.available_units,p.weight,c.category_id,c.category_name from category c inner join product p on c.category_id=p.category_id;
+
+create view pro_cat as select p.pro_id,p.name,p.price,p.discount,p.available_units,p.weight,c.category_id,c.category_name from category c inner join product p on c.category_id=p.category_id;
+
+SELECT * FROM PRO_CAT;
